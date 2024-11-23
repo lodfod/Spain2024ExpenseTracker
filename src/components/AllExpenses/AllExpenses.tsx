@@ -35,7 +35,6 @@ export function AllExpenses() {
         const processedExpenses = await Promise.all(
           data.map(async (expense) => {
             const payers = await getPayers(
-              expense.id,
               expense.cost,
               expense.payers,
               expense.creator
@@ -54,7 +53,6 @@ export function AllExpenses() {
       }
     };
     async function getPayers(
-      expenseId: string,
       cost: number,
       payerIds: string[],
       creatorId: string
