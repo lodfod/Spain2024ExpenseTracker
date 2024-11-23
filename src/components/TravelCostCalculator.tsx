@@ -61,9 +61,10 @@ export default function TravelCostCalculator({
   const { toast } = useToast();
 
   const handleSelectAll = (checked: boolean | "indeterminate") => {
-    const isChecked = checked === true;
     setPayers((prev) =>
-      Object.fromEntries(Object.keys(prev).map((key) => [key, isChecked]))
+      Object.fromEntries(
+        Object.keys(prev).map((key) => [key, checked === true])
+      )
     );
   };
 
@@ -313,6 +314,7 @@ export default function TravelCostCalculator({
                   id="selectAll"
                   checked={Object.values(payers).every(Boolean)}
                   onCheckedChange={handleSelectAll}
+                  aria-label="Select all payers"
                 />
                 <Label htmlFor="selectAll">Select All</Label>
               </div>
