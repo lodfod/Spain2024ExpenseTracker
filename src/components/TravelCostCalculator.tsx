@@ -53,7 +53,7 @@ export default function TravelCostCalculator({
   const [location, setLocation] = useState("");
   const [category, setCategory] = useState("");
   const [payers, setPayers] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(groupMembers.map((member) => [member, false]))
+    Object.fromEntries(groupMembers.map((member) => [member.id, false]))
   );
   const [attachment, setAttachment] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -66,9 +66,9 @@ export default function TravelCostCalculator({
   const { toast } = useToast();
 
   const handleSelectAll = (checked: boolean | "indeterminate") => {
-    setPayers((prev) =>
+    setPayers(
       Object.fromEntries(
-        Object.keys(prev).map((key) => [key, checked === true])
+        groupMembers.map((member) => [member.id, checked === true])
       )
     );
   };
@@ -341,7 +341,10 @@ export default function TravelCostCalculator({
               <div className="flex items-center gap-2">
                 <Checkbox
                   id="selectAll"
-                  checked={Object.values(payers).every(Boolean)}
+                  checked={
+                    Object.values(payers).length > 0 &&
+                    Object.values(payers).every(Boolean)
+                  }
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all payers"
                 />
