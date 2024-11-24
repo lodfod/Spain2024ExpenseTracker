@@ -5,6 +5,7 @@ import { Icons } from "../components/ui/icons";
 import supabase from "../lib/createClient";
 import { getRedirectURL } from "../lib/getRedirectURL";
 
+// test
 const Auth = ({
   setIsLoading,
   isLoading,
