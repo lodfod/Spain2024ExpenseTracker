@@ -54,6 +54,9 @@ const Auth = ({
         <p className="text-[9px] pt-1 text-gray-500">
           Use your Google account to sign in
         </p>
+        <p className="text-[9px] pt-1 text-gray-500">
+          redirect url: {getRedirectURL()}
+        </p>
       </div>
     </div>
   );
