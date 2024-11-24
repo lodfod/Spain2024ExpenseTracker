@@ -44,6 +44,8 @@ const Navbar = ({ fullName, setIsLoading }: NavbarProps) => {
     }
   };
 
+  // test
+
   return (
     <nav className="w-full p-4">
       <div className="flex justify-end">
