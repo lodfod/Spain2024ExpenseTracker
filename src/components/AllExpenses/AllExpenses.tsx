@@ -16,6 +16,7 @@ import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ExternalLink } from "lucide-react";
 import { Button } from "../ui/button";
+import { UUID } from "crypto";
 
 export function AllExpenses() {
   const [allExpenses, setAllExpenses] = useState<Expense[]>();
@@ -24,61 +25,42 @@ export function AllExpenses() {
   useEffect(() => {
     const fetchExpenses = async () => {
       const { data, error } = await supabase.from("expenses").select(`
-        *,
-        profiles:creator (
-          full_name
-        )
-      `);
+          *,
+          profiles:creator_id (
+            full_name
+          ),
+          payer_amounts (
+            user_id,
+            amount,
+            profiles:user_id (
+              full_name
+            )
+          )
+        `);
 
       if (error) {
         console.log("Error fetching expenses:", error);
       } else {
-        // Process expenses sequentially with payer information
-        const processedExpenses = await Promise.all(
-          data.map(async (expense) => {
-            const payers = await getPayers(
-              expense.cost,
-              expense.payers,
-              expense.creator
-            );
-            return {
-              ...expense,
-              expenseName: expense.name,
-              creatorName: expense.profiles.full_name,
-              date: format(new Date(expense.created_at), "MM/dd/yyyy HH:mm"),
-              payers: payers,
-            };
-          })
-        );
-
-        setAllExpenses(processedExpenses as Expense[]);
+        const processedExpenses = data.map((expense) => ({
+          ...expense,
+          expenseName: expense.name,
+          creatorName: expense.profiles.full_name,
+          date: format(new Date(expense.created_at), "MM/dd/yyyy HH:mm"),
+          payers: expense.payer_amounts.map(
+            (pa: {
+              user_id: UUID;
+              profiles: { full_name: string };
+              amount: number;
+            }) => ({
+              id: pa.user_id,
+              full_name: pa.profiles.full_name,
+              amount: pa.amount,
+            })
+          ),
+        }));
+        setAllExpenses(processedExpenses);
       }
     };
-    async function getPayers(
-      cost: number,
-      payerIds: string[],
-      creatorId: string
-    ) {
-      const { data: payerProfiles, error } = await supabase
-        .from("profiles")
-        .select("id, full_name, email")
-        .in("id", payerIds);
-
-      if (error) {
-        console.log("Error fetching payers:", error);
-        return [];
-      }
-
-      const amountPerPayer = cost / payerIds.length;
-
-      return payerProfiles.map((profile) => ({
-        id: profile.id,
-        full_name: profile.full_name,
-        email: profile.email,
-        amount: amountPerPayer,
-        isCreator: profile.id === creatorId,
-      }));
-    }
     fetchExpenses();
   }, []);
   return (

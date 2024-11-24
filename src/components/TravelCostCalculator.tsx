@@ -43,8 +43,12 @@ export default function TravelCostCalculator({
   const [itemCost, setItemCost] = useState("");
   const [location, setLocation] = useState("");
   const [category, setCategory] = useState("");
-  const [payers, setPayers] = useState<Record<string, boolean>>(() =>
-    Object.fromEntries(groupMembers.map((member) => [member.id, false]))
+  const [payers, setPayers] = useState<
+    Record<string, { selected: boolean; amount?: number }>
+  >(() =>
+    Object.fromEntries(
+      groupMembers.map((member) => [member.id, { selected: false }])
+    )
   );
   const [attachment, setAttachment] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,11 +61,25 @@ export default function TravelCostCalculator({
   const { toast } = useToast();
 
   const handleSelectAll = (checked: boolean | "indeterminate") => {
+    const amountPerPerson = parseFloat(itemCost || "0") / groupMembers.length;
     setPayers(
       Object.fromEntries(
-        groupMembers.map((member) => [member.id, checked === true])
+        groupMembers.map((member) => [
+          member.id,
+          {
+            selected: checked === true,
+            amount: checked ? amountPerPerson : undefined,
+          },
+        ])
       )
     );
+  };
+
+  const handleAmountChange = (id: string, amount: string) => {
+    setPayers((prev) => ({
+      ...prev,
+      [id]: { ...prev[id], amount: amount ? parseFloat(amount) : undefined },
+    }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,8 +126,21 @@ export default function TravelCostCalculator({
       newErrors.category = "Category is required";
     }
 
-    if (Object.values(payers).every((v) => !v)) {
+    const selectedPayers = Object.entries(payers).filter(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      ([_, value]) => value.selected
+    );
+    if (selectedPayers.length === 0) {
       newErrors.payers = "At least one payer must be selected";
+    }
+
+    const totalAmount = selectedPayers.reduce(
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      (sum, [_, value]) => sum + (value.amount || 0),
+      0
+    );
+    if (Math.abs(totalAmount - parseFloat(itemCost)) > 0.01) {
+      newErrors.payers = "Total amounts must equal the expense cost";
     }
 
     setErrors(newErrors);
@@ -168,22 +199,47 @@ export default function TravelCostCalculator({
       }
 
       setSubmitStatus("saving");
+
+      // First, insert the expense
       const expenseItem: ExpenseItem = {
         name: itemName,
         cost: parseFloat(itemCost),
-        location: location,
-        category: category,
+        location,
+        category,
         payers: Object.entries(payers)
           // eslint-disable-next-line @typescript-eslint/no-unused-vars
-          .filter(([_, value]) => value)
+          .filter(([_, value]) => value.selected)
           .map(([key]) => key),
         creator: session?.user.id,
         receipt_url: receiptUrl || undefined,
       };
 
-      const { error } = await supabase.from("expenses").insert(expenseItem);
+      const { data: expenseData, error: expenseError } = await supabase
+        .from("expenses")
+        .insert(expenseItem)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (expenseError) throw expenseError;
+
+      // Then, insert the payer amounts
+      const payerAmounts = Object.entries(payers)
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        .filter(([_, value]) => value.selected)
+        .map(([userId, value]) => ({
+          expense_id: expenseData.id,
+          user_id: userId,
+          amount:
+            value.amount ||
+            parseFloat(itemCost) /
+              Object.values(payers).filter((p) => p.selected).length,
+        }));
+
+      const { error: amountsError } = await supabase
+        .from("payer_amounts")
+        .insert(payerAmounts);
+
+      if (amountsError) throw amountsError;
 
       setSubmitStatus("success");
       toast({
@@ -197,7 +253,9 @@ export default function TravelCostCalculator({
       setLocation("");
       setCategory("");
       setPayers(
-        Object.fromEntries(groupMembers.map((member) => [member.id, false]))
+        Object.fromEntries(
+          groupMembers.map((member) => [member.id, { selected: false }])
+        )
       );
       setAttachment(null);
       setErrors({});
@@ -334,26 +392,47 @@ export default function TravelCostCalculator({
                   id="selectAll"
                   checked={
                     Object.values(payers).length > 0 &&
-                    Object.values(payers).every(Boolean)
+                    Object.values(payers).every((p) => p.selected)
                   }
                   onCheckedChange={handleSelectAll}
                   aria-label="Select all payers"
                 />
-                <Label htmlFor="selectAll">Select All</Label>
+                <Label htmlFor="selectAll">Split Equally</Label>
               </div>
               {groupMembers.map((member) => (
                 <div key={member.id} className="flex items-center gap-2">
                   <Checkbox
                     id={member.id}
-                    checked={payers[member.id]}
+                    checked={payers[member.id].selected}
                     onCheckedChange={(checked) =>
                       setPayers((prev) => ({
                         ...prev,
-                        [member.id]: checked as boolean,
+                        [member.id]: {
+                          ...prev[member.id],
+                          selected: checked === true,
+                          amount: checked
+                            ? parseFloat(itemCost || "0") /
+                              Object.values(payers).filter((p) => p.selected)
+                                .length
+                            : undefined,
+                        },
                       }))
                     }
                   />
                   <Label htmlFor={member.id}>{member.full_name}</Label>
+                  {payers[member.id].selected && (
+                    <Input
+                      type="number"
+                      value={payers[member.id].amount?.toString() || ""}
+                      onChange={(e) =>
+                        handleAmountChange(member.id, e.target.value)
+                      }
+                      className="w-24 h-8"
+                      placeholder="Amount"
+                      min="0"
+                      step="0.01"
+                    />
+                  )}
                 </div>
               ))}
             </div>

@@ -4,6 +4,18 @@ import supabase from "../lib/createClient";
 
 import { Icons } from "../components/ui/icons";
 
+const getRedirectURL = () => {
+  let url =
+    process?.env?.NEXT_PUBLIC_SITE_URL ?? // Set this to your site URL in production env.
+    process?.env?.NEXT_PUBLIC_VERCEL_URL ?? // Automatically set by Vercel.
+    "http://localhost:3000/";
+  // Make sure to include `https://` when not localhost.
+  url = url.startsWith("http") ? url : `https://${url}`;
+  // Make sure to include a trailing `/`.
+  url = url.endsWith("/") ? url : `${url}/`;
+  return url;
+};
+
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -12,6 +24,9 @@ const Auth = () => {
       setIsLoading(true);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
+        options: {
+          redirectTo: getRedirectURL(),
+        },
       });
       if (error) throw error;
     } catch (error) {
