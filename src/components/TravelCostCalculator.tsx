@@ -17,11 +17,12 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { Paperclip } from "lucide-react";
+import { Paperclip, Loader2 } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { GroupMember } from "../lib/types";
 import supabase from "../lib/createClient";
 import { Session } from "@supabase/supabase-js";
+import { v4 as uuidv4 } from "uuid";
 
 interface ExpenseItem {
   name: string;
@@ -31,6 +32,7 @@ interface ExpenseItem {
   payers: string[];
   attachment?: File;
   creator: string;
+  receipt_url?: string;
 }
 
 interface TravelCostCalculatorProps {
@@ -57,6 +59,9 @@ export default function TravelCostCalculator({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitStatus, setSubmitStatus] = useState<
+    "idle" | "uploading" | "saving" | "success" | "error"
+  >("idle");
 
   const { toast } = useToast();
 
@@ -120,6 +125,34 @@ export default function TravelCostCalculator({
     return Object.keys(newErrors).length === 0;
   };
 
+  const uploadReceipt = async (file: File): Promise<string | null> => {
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${uuidv4()}.${fileExt}`;
+      const filePath = `receipts/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("uploads")
+        .upload(filePath, file);
+
+      if (uploadError) {
+        toast({
+          title: "Upload failed",
+          description: uploadError.message,
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      const { data } = supabase.storage.from("uploads").getPublicUrl(filePath);
+
+      return data.publicUrl;
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      return null;
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) {
@@ -131,68 +164,64 @@ export default function TravelCostCalculator({
       return;
     }
 
-    const expenseItem: ExpenseItem = {
-      name: itemName,
-      cost: parseFloat(itemCost),
-      location: location,
-      category: category,
-      payers: Object.entries(payers)
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        .filter(([_, value]) => value)
-        .map(([key]) => key),
-      attachment: attachment || undefined,
-      creator: session?.user.id,
-    };
     try {
-      const { data, error } = await supabase
-        .from("expenses")
-        .insert(expenseItem);
-      if (error) {
-        toast({
-          title: "Error adding expense",
-          description: error.message,
-          variant: "destructive",
-        });
+      let receiptUrl: string | null = null;
+
+      if (attachment) {
+        setSubmitStatus("uploading");
+        receiptUrl = await uploadReceipt(attachment);
+        if (!receiptUrl) {
+          setSubmitStatus("error");
+          return;
+        }
       }
-      if (data) {
-        toast({
-          title: "Expense added",
-          description: `Your expense "${expenseItem.name}" has been successfully added.`,
-        });
-      }
-    } catch (error) {
+
+      setSubmitStatus("saving");
+      const expenseItem: ExpenseItem = {
+        name: itemName,
+        cost: parseFloat(itemCost),
+        location: location,
+        category: category,
+        payers: Object.entries(payers)
+          // eslint-disable-next-line @typescript-eslint/no-unused-vars
+          .filter(([_, value]) => value)
+          .map(([key]) => key),
+        creator: session?.user.id,
+        receipt_url: receiptUrl || undefined,
+      };
+
+      const { error } = await supabase.from("expenses").insert(expenseItem);
+
+      if (error) throw error;
+
+      setSubmitStatus("success");
       toast({
-        title: "Error adding expense",
+        title: "Success",
+        description: "Expense added successfully",
+      });
+
+      // Reset form
+      setItemName("");
+      setItemCost("");
+      setLocation("");
+      setCategory("");
+      setPayers(
+        Object.fromEntries(groupMembers.map((member) => [member.id, false]))
+      );
+      setAttachment(null);
+      setErrors({});
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      setSubmitStatus("idle");
+    } catch (error) {
+      setSubmitStatus("error");
+      toast({
+        title: "Error",
         description:
-          error instanceof Error ? error.message : "An unknown error occurred",
+          error instanceof Error ? error.message : "Failed to add expense",
         variant: "destructive",
       });
-    }
-
-    console.log(
-      "Submitted expense item:",
-      JSON.stringify(
-        {
-          ...expenseItem,
-          attachment: attachment ? attachment.name : undefined,
-        },
-        null,
-        2
-      )
-    );
-
-    // Reset form
-    setItemName("");
-    setItemCost("");
-    setLocation("");
-    setCategory("");
-    setPayers(
-      Object.fromEntries(groupMembers.map((member) => [member.id, false]))
-    );
-    setAttachment(null);
-    setErrors({});
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
     }
   };
 
@@ -369,8 +398,27 @@ export default function TravelCostCalculator({
         </form>
       </CardContent>
       <CardFooter>
-        <Button type="submit" className="w-full" onClick={handleSubmit}>
-          Add Expense
+        <Button
+          type="submit"
+          className="w-full"
+          onClick={handleSubmit}
+          disabled={submitStatus !== "idle"}
+        >
+          {submitStatus === "idle" && "Add Expense"}
+          {submitStatus === "uploading" && (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Uploading Receipt...
+            </>
+          )}
+          {submitStatus === "saving" && (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Saving Expense...
+            </>
+          )}
+          {submitStatus === "success" && "Success!"}
+          {submitStatus === "error" && "Error - Try Again"}
         </Button>
       </CardFooter>
     </Card>
