@@ -54,12 +54,17 @@ function App() {
     "Other",
   ];
 
+  const [isLoading, setIsLoading] = useState(false);
+
   return (
     <>
       <SessionContext.Provider value={session}>
         {session ? (
           <>
-            <Navbar fullName={session.user.user_metadata.full_name || ""} />
+            <Navbar
+              setIsLoading={setIsLoading}
+              fullName={session.user.user_metadata.full_name || ""}
+            />
             <div className="flex flex-col items-center justify-center h-[calc(100vh-64px)]">
               <TravelCostCalculator
                 groupMembers={groupMembers}
@@ -71,7 +76,7 @@ function App() {
             <AllExpensesParent />
           </>
         ) : (
-          <Auth />
+          <Auth setIsLoading={setIsLoading} isLoading={isLoading} />
         )}
       </SessionContext.Provider>
       <Toaster /> {/* Add this line */}

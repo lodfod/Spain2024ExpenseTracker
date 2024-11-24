@@ -1,19 +1,28 @@
-import { useState } from "react";
 import { Button } from "../components/ui/button";
-import supabase from "../lib/createClient";
 
 import { Icons } from "../components/ui/icons";
 
-const Auth = () => {
-  const [isLoading, setIsLoading] = useState(false);
+import supabase from "../lib/createClient";
+import { getRedirectURL } from "../lib/getRedirectURL";
 
+const Auth = ({
+  setIsLoading,
+  isLoading,
+}: {
+  setIsLoading: (isLoading: boolean) => void;
+  isLoading: boolean;
+}) => {
   const handleGoogleSignIn = async () => {
     try {
       setIsLoading(true);
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: getRedirectURL(),
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
       });
       if (error) throw error;

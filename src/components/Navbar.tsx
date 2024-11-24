@@ -9,9 +9,10 @@ import supabase from "../lib/createClient";
 
 interface NavbarProps {
   fullName: string;
+  setIsLoading: (isLoading: boolean) => void;
 }
 
-const Navbar = ({ fullName }: NavbarProps) => {
+const Navbar = ({ fullName, setIsLoading }: NavbarProps) => {
   const getInitials = (fullName: string) => {
     return fullName
       .split(" ")
@@ -31,6 +32,18 @@ const Navbar = ({ fullName }: NavbarProps) => {
     return colors[Math.floor(Math.random() * colors.length)];
   };
 
+  const handleSignOut = async () => {
+    try {
+      setIsLoading(true);
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+    } catch (error) {
+      console.error("Error signing out:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <nav className="w-full p-4">
       <div className="flex justify-end">
@@ -44,7 +57,7 @@ const Navbar = ({ fullName }: NavbarProps) => {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => supabase.auth.signOut()}>
+            <DropdownMenuItem onClick={() => handleSignOut}>
               Sign out
             </DropdownMenuItem>
           </DropdownMenuContent>
