@@ -60,19 +60,56 @@ export default function TravelCostCalculator({
 
   const { toast } = useToast();
 
+  const calculateSplitAmounts = (
+    totalAmount: number,
+    count: number
+  ): number[] => {
+    const baseAmount = Number((totalAmount / count).toFixed(2));
+    const amounts = Array(count).fill(baseAmount);
+
+    // Calculate the rounding difference
+    const totalAfterRounding = Number((baseAmount * count).toFixed(2));
+    let remainder = Number((totalAmount - totalAfterRounding).toFixed(2));
+
+    // Distribute the remainder cent by cent
+    let index = 0;
+    while (remainder > 0) {
+      amounts[index] = Number((amounts[index] + 0.01).toFixed(2));
+      remainder = Number((remainder - 0.01).toFixed(2));
+      index = (index + 1) % count;
+    }
+
+    return amounts;
+  };
+
   const handleSelectAll = (checked: boolean | "indeterminate") => {
-    const amountPerPerson = parseFloat(itemCost || "0") / groupMembers.length;
-    setPayers(
-      Object.fromEntries(
-        groupMembers.map((member) => [
-          member.id,
-          {
-            selected: checked === true,
-            amount: checked ? amountPerPerson : undefined,
-          },
-        ])
-      )
-    );
+    if (checked) {
+      const splitAmounts = calculateSplitAmounts(
+        parseFloat(itemCost || "0"),
+        groupMembers.length
+      );
+
+      setPayers(
+        Object.fromEntries(
+          groupMembers.map((member, index) => [
+            member.id,
+            {
+              selected: true,
+              amount: splitAmounts[index],
+            },
+          ])
+        )
+      );
+    } else {
+      setPayers(
+        Object.fromEntries(
+          groupMembers.map((member) => [
+            member.id,
+            { selected: false, amount: undefined },
+          ])
+        )
+      );
+    }
   };
 
   const handleAmountChange = (id: string, amount: string) => {
@@ -403,27 +440,50 @@ export default function TravelCostCalculator({
                 <div key={member.id} className="flex items-center gap-2">
                   <Checkbox
                     id={member.id}
-                    checked={payers[member.id].selected}
+                    checked={payers[member.id]?.selected}
                     onCheckedChange={(checked) =>
-                      setPayers((prev) => ({
-                        ...prev,
-                        [member.id]: {
-                          ...prev[member.id],
-                          selected: checked === true,
-                          amount: checked
-                            ? parseFloat(itemCost || "0") /
-                              Object.values(payers).filter((p) => p.selected)
-                                .length
-                            : undefined,
-                        },
-                      }))
+                      setPayers((prev) => {
+                        const newPayers = {
+                          ...prev,
+                          [member.id]: {
+                            ...prev[member.id],
+                            selected: checked === true,
+                            amount: undefined,
+                          },
+                        };
+
+                        const selectedPayers = Object.values(newPayers).filter(
+                          (p) => p.selected
+                        );
+                        if (selectedPayers.length > 0) {
+                          const splitAmounts = calculateSplitAmounts(
+                            parseFloat(itemCost || "0"),
+                            selectedPayers.length
+                          );
+
+                          let amountIndex = 0;
+                          return Object.fromEntries(
+                            Object.entries(newPayers).map(([key, value]) => [
+                              key,
+                              {
+                                ...value,
+                                amount: value.selected
+                                  ? splitAmounts[amountIndex++]
+                                  : undefined,
+                              },
+                            ])
+                          );
+                        }
+
+                        return newPayers;
+                      })
                     }
                   />
                   <Label htmlFor={member.id}>{member.full_name}</Label>
-                  {payers[member.id].selected && (
+                  {payers[member.id]?.selected && (
                     <Input
                       type="number"
-                      value={payers[member.id].amount?.toString() || ""}
+                      value={payers[member.id]?.amount?.toString() || ""}
                       onChange={(e) =>
                         handleAmountChange(member.id, e.target.value)
                       }

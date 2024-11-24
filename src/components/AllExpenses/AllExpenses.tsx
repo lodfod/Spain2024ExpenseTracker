@@ -18,6 +18,9 @@ import { ExternalLink } from "lucide-react";
 import { Button } from "../ui/button";
 import { UUID } from "crypto";
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { ProcessedPayer } from "../../lib/types";
+
 export function AllExpenses() {
   const [allExpenses, setAllExpenses] = useState<Expense[]>();
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
@@ -26,7 +29,7 @@ export function AllExpenses() {
     const fetchExpenses = async () => {
       const { data, error } = await supabase.from("expenses").select(`
           *,
-          profiles:creator_id (
+          profiles:creator (
             full_name
           ),
           payer_amounts (
@@ -108,7 +111,7 @@ export function AllExpenses() {
                     {expense.payers.length > 1 ? (
                       expense.payers.map(
                         (payer, index) =>
-                          !payer.isCreator && (
+                          payer.id !== expense.creator && (
                             <div
                               key={index}
                               className="grid grid-cols-2 items-center gap-4"
