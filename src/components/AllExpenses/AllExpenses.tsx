@@ -18,9 +18,6 @@ import { ExternalLink } from "lucide-react";
 import { Button } from "../ui/button";
 import { UUID } from "crypto";
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import { ProcessedPayer } from "../../lib/types";
-
 export function AllExpenses() {
   const [allExpenses, setAllExpenses] = useState<Expense[]>();
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
