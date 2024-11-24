@@ -24,16 +24,7 @@ import supabase from "../lib/createClient";
 import { Session } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from "uuid";
 
-interface ExpenseItem {
-  name: string;
-  cost: number;
-  location: string;
-  category: string;
-  payers: string[];
-  attachment?: File;
-  creator: string;
-  receipt_url?: string;
-}
+import { ExpenseItem } from "../lib/types";
 
 interface TravelCostCalculatorProps {
   groupMembers: GroupMember[];

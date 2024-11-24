@@ -13,6 +13,18 @@ export interface Expense {
   category: string;
   location: string;
   payers: Payer[];
+  receipt_url?: string;
+}
+
+export interface ExpenseItem {
+  name: string;
+  cost: number;
+  location: string;
+  category: string;
+  payers: string[];
+  attachment?: File;
+  creator: string;
+  receipt_url?: string;
 }
 
 export type Payer = {

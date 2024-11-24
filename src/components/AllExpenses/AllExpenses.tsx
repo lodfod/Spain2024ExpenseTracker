@@ -14,6 +14,8 @@ import { useState, useEffect } from "react";
 
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { ExternalLink } from "lucide-react";
+import { Button } from "../ui/button";
 
 export function AllExpenses() {
   const [allExpenses, setAllExpenses] = useState<Expense[]>();
@@ -146,6 +148,20 @@ export function AllExpenses() {
                       </div>
                     )}
                   </div>
+                  {expense.receipt_url && (
+                    <div className="pt-2 border-t">
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        onClick={() =>
+                          window.open(expense.receipt_url, "_blank")
+                        }
+                      >
+                        <ExternalLink className="mr-2 h-4 w-4" />
+                        View Receipt
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </PopoverContent>
             </Popover>
