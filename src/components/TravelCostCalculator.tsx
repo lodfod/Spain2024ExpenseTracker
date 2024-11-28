@@ -328,7 +328,7 @@ export default function TravelCostCalculator({
         <Tabs defaultValue="manual-input" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="manual-input">Cost Input</TabsTrigger>
-            <TabsTrigger value="receipt-reader">Receipt Reader</TabsTrigger>
+            {/* <TabsTrigger value="receipt-reader">Receipt Reader</TabsTrigger> */}
           </TabsList>
 
           <TabsContent value="manual-input">
