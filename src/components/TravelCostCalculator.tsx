@@ -17,14 +17,16 @@ import {
   CardHeader,
   CardTitle,
 } from "./ui/card";
-import { Paperclip, Loader2 } from "lucide-react";
+import { Paperclip, Loader2, EuroIcon, DollarSign } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { GroupMember } from "../lib/types";
 import supabase from "../lib/createClient";
 import { Session } from "@supabase/supabase-js";
 import { v4 as uuidv4 } from "uuid";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 
 import { ExpenseItem } from "../lib/types";
+// import { ReceiptReader } from "./ReceiptReader";
 
 interface TravelCostCalculatorProps {
   groupMembers: GroupMember[];
@@ -59,6 +61,9 @@ export default function TravelCostCalculator({
   >("idle");
 
   const { toast } = useToast();
+
+  const [currency, setCurrency] = useState<"EUR" | "USD">("EUR");
+  const DOLLAR_TO_EURO_RATE = 0.95;
 
   const calculateSplitAmounts = (
     totalAmount: number,
@@ -212,20 +217,18 @@ export default function TravelCostCalculator({
     }
   };
 
+  const convertToEuros = (amount: number): number => {
+    return currency === "USD"
+      ? Number((amount * DOLLAR_TO_EURO_RATE).toFixed(2))
+      : amount;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validateForm()) {
-      toast({
-        title: "Form Validation Error",
-        description: "Please correct the errors in the form.",
-        variant: "destructive",
-      });
-      return;
-    }
+    if (!validateForm()) return;
 
     try {
       let receiptUrl: string | null = null;
-
       if (attachment) {
         setSubmitStatus("uploading");
         receiptUrl = await uploadReceipt(attachment);
@@ -237,10 +240,13 @@ export default function TravelCostCalculator({
 
       setSubmitStatus("saving");
 
+      // Convert amount to euros before saving
+      const costInEuros = convertToEuros(parseFloat(itemCost));
+
       // First, insert the expense
       const expenseItem: ExpenseItem = {
         name: itemName,
-        cost: parseFloat(itemCost),
+        cost: costInEuros, // Save in euros
         location,
         category,
         payers: Object.entries(payers)
@@ -249,6 +255,8 @@ export default function TravelCostCalculator({
           .map(([key]) => key),
         creator: session?.user.id,
         receipt_url: receiptUrl || undefined,
+        original_currency: currency, // Add this to your ExpenseItem type
+        original_amount: parseFloat(itemCost), // Add this to your ExpenseItem type
       };
 
       const { data: expenseData, error: expenseError } = await supabase
@@ -317,218 +325,272 @@ export default function TravelCostCalculator({
         <CardTitle>Add New Expense</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-          <div className="flex gap-4">
-            <div className="flex-1 flex flex-col gap-2 items-start">
-              <Label htmlFor="itemName" className="self-start">
-                Item Name
-              </Label>
-              <Input
-                id="itemName"
-                value={itemName}
-                onChange={(e) => setItemName(e.target.value)}
-                required
-                aria-invalid={!!errors.itemName}
-                aria-describedby={
-                  errors.itemName ? "itemName-error" : undefined
-                }
-              />
-              {errors.itemName && (
-                <p id="itemName-error" className="text-sm text-red-500">
-                  {errors.itemName}
-                </p>
-              )}
-            </div>
-            <div className="flex-1 flex flex-col gap-2 items-start">
-              <Label htmlFor="itemCost" className="self-start">
-                Cost
-              </Label>
-              <Input
-                id="itemCost"
-                type="number"
-                value={itemCost}
-                onChange={(e) => setItemCost(e.target.value)}
-                required
-                min="0"
-                step="0.01"
-                aria-invalid={!!errors.itemCost}
-                aria-describedby={
-                  errors.itemCost ? "itemCost-error" : undefined
-                }
-              />
-              {errors.itemCost && (
-                <p id="itemCost-error" className="text-sm text-red-500">
-                  {errors.itemCost}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex gap-4">
-            <div className="flex-1 flex flex-col gap-2 items-start">
-              <Label htmlFor="location" className="self-start">
-                Location
-              </Label>
-              <Select value={location} onValueChange={setLocation} required>
-                <SelectTrigger
-                  id="location"
-                  aria-invalid={!!errors.location}
-                  aria-describedby={
-                    errors.location ? "location-error" : undefined
-                  }
-                >
-                  <SelectValue placeholder="Select Location" />
-                </SelectTrigger>
-                <SelectContent>
-                  {locations.map((loc) => (
-                    <SelectItem key={loc} value={loc}>
-                      {loc}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.location && (
-                <p id="location-error" className="text-sm text-red-500">
-                  {errors.location}
-                </p>
-              )}
-            </div>
-            <div className="flex-1 flex flex-col gap-2 items-start">
-              <Label htmlFor="category" className="self-start">
-                Category
-              </Label>
-              <Select value={category} onValueChange={setCategory} required>
-                <SelectTrigger
-                  id="category"
-                  aria-invalid={!!errors.category}
-                  aria-describedby={
-                    errors.category ? "category-error" : undefined
-                  }
-                >
-                  <SelectValue placeholder="Select Category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat}>
-                      {cat}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.category && (
-                <p id="category-error" className="text-sm text-red-500">
-                  {errors.category}
-                </p>
-              )}
-            </div>
-          </div>
-          <div className="flex flex-col gap-2 items-start">
-            <Label className="self-start">Who should be charged?</Label>
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="selectAll"
-                  checked={
-                    Object.values(payers).length > 0 &&
-                    Object.values(payers).every((p) => p.selected)
-                  }
-                  onCheckedChange={handleSelectAll}
-                  aria-label="Select all payers"
-                />
-                <Label htmlFor="selectAll">Split Equally</Label>
-              </div>
-              {groupMembers.map((member) => (
-                <div key={member.id} className="flex items-center gap-2">
-                  <Checkbox
-                    id={member.id}
-                    checked={payers[member.id]?.selected}
-                    onCheckedChange={(checked) =>
-                      setPayers((prev) => {
-                        const newPayers = {
-                          ...prev,
-                          [member.id]: {
-                            ...prev[member.id],
-                            selected: checked === true,
-                            amount: undefined,
-                          },
-                        };
+        <Tabs defaultValue="manual-input" className="w-full">
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="manual-input">Cost Input</TabsTrigger>
+            <TabsTrigger value="receipt-reader">Receipt Reader</TabsTrigger>
+          </TabsList>
 
-                        const selectedPayers = Object.values(newPayers).filter(
-                          (p) => p.selected
-                        );
-                        if (selectedPayers.length > 0) {
-                          const splitAmounts = calculateSplitAmounts(
-                            parseFloat(itemCost || "0"),
-                            selectedPayers.length
-                          );
-
-                          let amountIndex = 0;
-                          return Object.fromEntries(
-                            Object.entries(newPayers).map(([key, value]) => [
-                              key,
-                              {
-                                ...value,
-                                amount: value.selected
-                                  ? splitAmounts[amountIndex++]
-                                  : undefined,
-                              },
-                            ])
-                          );
-                        }
-
-                        return newPayers;
-                      })
+          <TabsContent value="manual-input">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="flex gap-4">
+                <div className="flex-1 flex flex-col gap-2 items-start">
+                  <Label htmlFor="itemName" className="self-start">
+                    Item Name
+                  </Label>
+                  <Input
+                    id="itemName"
+                    value={itemName}
+                    onChange={(e) => setItemName(e.target.value)}
+                    required
+                    aria-invalid={!!errors.itemName}
+                    aria-describedby={
+                      errors.itemName ? "itemName-error" : undefined
                     }
                   />
-                  <Label htmlFor={member.id}>{member.full_name}</Label>
-                  {payers[member.id]?.selected && (
-                    <Input
-                      type="number"
-                      value={payers[member.id]?.amount?.toString() || ""}
-                      onChange={(e) =>
-                        handleAmountChange(member.id, e.target.value)
-                      }
-                      className="w-24 h-8"
-                      placeholder="Amount"
-                      min="0"
-                      step="0.01"
-                    />
+                  {errors.itemName && (
+                    <p id="itemName-error" className="text-sm text-red-500">
+                      {errors.itemName}
+                    </p>
                   )}
                 </div>
-              ))}
-            </div>
-            {errors.payers && (
-              <p className="text-sm text-red-500">{errors.payers}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2 items-start">
-            <Label htmlFor="attachment" className="self-start">
-              Attachment (Optional)
-            </Label>
-            <div className="flex items-center gap-2">
-              <Input
-                id="attachment"
-                type="file"
-                onChange={handleFileChange}
-                className="hidden"
-                ref={fileInputRef}
-                accept="image/*,.pdf"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Paperclip className="w-4 h-4 mr-2" />
-                {attachment ? "Change File" : "Upload File"}
-              </Button>
-              {attachment && (
-                <span className="text-sm text-muted-foreground">
-                  {attachment.name}
-                </span>
-              )}
-            </div>
-          </div>
-        </form>
+                <div className="flex-1 flex flex-col gap-2 items-start">
+                  <Label htmlFor="itemCost" className="self-start">
+                    Cost
+                  </Label>
+                  <div className="flex w-full gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        id="itemCost"
+                        type="number"
+                        value={itemCost}
+                        onChange={(e) => setItemCost(e.target.value)}
+                        required
+                        min="0"
+                        step="0.01"
+                        aria-invalid={!!errors.itemCost}
+                        aria-describedby={
+                          errors.itemCost ? "itemCost-error" : undefined
+                        }
+                      />
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {currency === "EUR" ? (
+                          <EuroIcon className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <DollarSign className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </div>
+                    <Select
+                      value={currency}
+                      onValueChange={(value: "EUR" | "USD") =>
+                        setCurrency(value)
+                      }
+                    >
+                      <SelectTrigger className="w-[100px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="EUR">EUR</SelectItem>
+                        <SelectItem value="USD">USD</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {currency === "USD" && (
+                    <p className="text-xs text-muted-foreground">
+                      ≈ €
+                      {convertToEuros(parseFloat(itemCost || "0")).toFixed(2)}
+                    </p>
+                  )}
+                  {errors.itemCost && (
+                    <p id="itemCost-error" className="text-sm text-red-500">
+                      {errors.itemCost}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1 flex flex-col gap-2 items-start">
+                  <Label htmlFor="location" className="self-start">
+                    Location
+                  </Label>
+                  <Select value={location} onValueChange={setLocation} required>
+                    <SelectTrigger
+                      id="location"
+                      aria-invalid={!!errors.location}
+                      aria-describedby={
+                        errors.location ? "location-error" : undefined
+                      }
+                    >
+                      <SelectValue placeholder="Select Location" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {locations.map((loc) => (
+                        <SelectItem key={loc} value={loc}>
+                          {loc}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.location && (
+                    <p id="location-error" className="text-sm text-red-500">
+                      {errors.location}
+                    </p>
+                  )}
+                </div>
+                <div className="flex-1 flex flex-col gap-2 items-start">
+                  <Label htmlFor="category" className="self-start">
+                    Category
+                  </Label>
+                  <Select value={category} onValueChange={setCategory} required>
+                    <SelectTrigger
+                      id="category"
+                      aria-invalid={!!errors.category}
+                      aria-describedby={
+                        errors.category ? "category-error" : undefined
+                      }
+                    >
+                      <SelectValue placeholder="Select Category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {errors.category && (
+                    <p id="category-error" className="text-sm text-red-500">
+                      {errors.category}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex flex-col gap-2 items-start">
+                <Label className="self-start">Who should be charged?</Label>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="selectAll"
+                      checked={
+                        Object.values(payers).length > 0 &&
+                        Object.values(payers).every((p) => p.selected)
+                      }
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all payers"
+                    />
+                    <Label htmlFor="selectAll">Split Equally</Label>
+                  </div>
+                  {groupMembers.map((member) => (
+                    <div key={member.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={member.id}
+                        checked={payers[member.id]?.selected}
+                        onCheckedChange={(checked) =>
+                          setPayers((prev) => {
+                            const newPayers = {
+                              ...prev,
+                              [member.id]: {
+                                ...prev[member.id],
+                                selected: checked === true,
+                                amount: undefined,
+                              },
+                            };
+
+                            const selectedPayers = Object.values(
+                              newPayers
+                            ).filter((p) => p.selected);
+                            if (selectedPayers.length > 0) {
+                              const splitAmounts = calculateSplitAmounts(
+                                parseFloat(itemCost || "0"),
+                                selectedPayers.length
+                              );
+
+                              let amountIndex = 0;
+                              return Object.fromEntries(
+                                Object.entries(newPayers).map(
+                                  ([key, value]) => [
+                                    key,
+                                    {
+                                      ...value,
+                                      amount: value.selected
+                                        ? splitAmounts[amountIndex++]
+                                        : undefined,
+                                    },
+                                  ]
+                                )
+                              );
+                            }
+
+                            return newPayers;
+                          })
+                        }
+                      />
+                      <Label htmlFor={member.id}>{member.full_name}</Label>
+                      {payers[member.id]?.selected && (
+                        <Input
+                          type="number"
+                          value={payers[member.id]?.amount?.toString() || ""}
+                          onChange={(e) =>
+                            handleAmountChange(member.id, e.target.value)
+                          }
+                          className="w-24 h-8"
+                          placeholder="Amount"
+                          min="0"
+                          step="0.01"
+                        />
+                      )}
+                    </div>
+                  ))}
+                </div>
+                {errors.payers && (
+                  <p className="text-sm text-red-500">{errors.payers}</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-2 items-start">
+                <Label htmlFor="attachment" className="self-start">
+                  Attachment (Optional)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="attachment"
+                    type="file"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    ref={fileInputRef}
+                    accept="image/*,.pdf"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Paperclip className="w-4 h-4 mr-2" />
+                    {attachment ? "Change File" : "Upload File"}
+                  </Button>
+                  {attachment && (
+                    <span className="text-sm text-muted-foreground">
+                      {attachment.name}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </form>
+          </TabsContent>
+
+          {/* <TabsContent value="receipt-reader">
+            <ReceiptReader
+              onExtractedData={(data) => {
+                // Handle extracted data
+                if (data.itemName) setItemName(data.itemName);
+                if (data.cost) setItemCost(data.cost.toString());
+                if (data.location) setLocation(data.location);
+                // ... handle other fields
+              }}
+            />
+          </TabsContent> */}
+        </Tabs>
       </CardContent>
       <CardFooter>
         <Button

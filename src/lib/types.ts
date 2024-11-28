@@ -23,9 +23,10 @@ export interface ExpenseItem {
   location: string;
   category: string;
   payers: string[];
-  attachment?: File;
   creator: string;
   receipt_url?: string;
+  original_currency: Currency;
+  original_amount: number;
 }
 
 export type Payer = {
@@ -47,3 +48,19 @@ export interface ProcessedPayer {
   full_name: string;
   amount: number;
 }
+
+export interface ProcessedExpense {
+  id: string;
+  expenseName: string;
+  creatorName: string;
+  cost: number;
+  date: string;
+  category: string;
+  location: string;
+  payers: ProcessedPayer[];
+  receipt_url?: string;
+  original_currency: "EUR" | "USD";
+  original_amount: number;
+}
+
+export type Currency = "EUR" | "USD";
