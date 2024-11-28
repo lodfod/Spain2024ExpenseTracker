@@ -69,22 +69,21 @@ export default function TravelCostCalculator({
     totalAmount: number,
     count: number
   ): number[] => {
-    const baseAmount = Number((totalAmount / count).toFixed(2));
-    const amounts = Array(count).fill(baseAmount);
+    // Convert to cents to avoid floating point precision issues
+    const totalCents = Math.round(totalAmount * 100);
+    const baseAmountCents = Math.floor(totalCents / count);
+    const remainderCents = totalCents % count;
 
-    // Calculate the rounding difference
-    const totalAfterRounding = Number((baseAmount * count).toFixed(2));
-    let remainder = Number((totalAmount - totalAfterRounding).toFixed(2));
+    // Initialize all amounts with the base amount
+    const amounts = Array(count).fill(baseAmountCents);
 
-    // Distribute the remainder cent by cent
-    let index = 0;
-    while (remainder > 0) {
-      amounts[index] = Number((amounts[index] + 0.01).toFixed(2));
-      remainder = Number((remainder - 0.01).toFixed(2));
-      index = (index + 1) % count;
+    // Distribute the remaining cents
+    for (let i = 0; i < remainderCents; i++) {
+      amounts[i]++;
     }
 
-    return amounts;
+    // Convert back to dollars/euros with 2 decimal places
+    return amounts.map((cents) => Number((cents / 100).toFixed(2)));
   };
 
   const handleSelectAll = (checked: boolean | "indeterminate") => {
@@ -241,7 +240,7 @@ export default function TravelCostCalculator({
       setSubmitStatus("saving");
 
       // Convert amount to euros before saving
-      const costInEuros = convertToEuros(parseFloat(itemCost));
+      const costInEuros = Number(convertToEuros(Number(itemCost)).toFixed(2));
 
       // First, insert the expense
       const expenseItem: ExpenseItem = {
