@@ -4,17 +4,17 @@ import { Input } from "./ui/input";
 import { Upload, Loader2, FileText, X } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 
-interface ReceiptReaderProps {
-  onExtractedData?: (data: {
-    itemName?: string;
-    cost?: number;
-    location?: string;
-    date?: string;
-  }) => void;
-}
+// interface ReceiptReaderProps {
+//   onExtractedData?: (data: {
+//     itemName?: string;
+//     cost?: number;
+//     location?: string;
+//     date?: string;
+//   }) => void;
+// }
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function ReceiptReader({ onExtractedData }: ReceiptReaderProps) {
+// export function ReceiptReader({ onExtractedData }: ReceiptReaderProps) {
+export function ReceiptReader() {
   const [file, setFile] = useState<File | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const { toast } = useToast();
