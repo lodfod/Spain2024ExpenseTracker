@@ -90,7 +90,10 @@ export function AllExpenses() {
                 <TableRow className="text-left cursor-pointer hover:bg-muted/50">
                   <TableCell>{expense.creatorName}</TableCell>
                   <TableCell>{expense.expenseName}</TableCell>
-                  <TableCell>${expense.cost.toFixed(2)}</TableCell>
+                  <TableCell>
+                    {expense.original_currency === "USD" ? "$" : "€"}
+                    {expense.cost.toFixed(2)}
+                  </TableCell>
                   <TableCell>{expense.date}</TableCell>
                   <TableCell>{expense.category}</TableCell>
                   <TableCell>{expense.location}</TableCell>
@@ -119,7 +122,10 @@ export function AllExpenses() {
                                 </div>
                               </div>
                               <div className="text-right font-medium">
-                                ${payer.amount.toFixed(2)}
+                                {expense.original_currency === "USD"
+                                  ? "$"
+                                  : "€"}
+                                {payer.amount.toFixed(2)}
                               </div>
                             </div>
                           )

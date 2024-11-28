@@ -596,7 +596,7 @@ export default function TravelCostCalculator({
           type="submit"
           className="w-full"
           onClick={handleSubmit}
-          disabled={submitStatus !== "idle"}
+          disabled={submitStatus !== "idle" && submitStatus !== "error"}
         >
           {submitStatus === "idle" && "Add Expense"}
           {submitStatus === "uploading" && (

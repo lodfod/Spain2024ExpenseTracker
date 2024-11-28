@@ -64,6 +64,7 @@ function App() {
             <Navbar
               setIsLoading={setIsLoading}
               fullName={session.user.user_metadata.full_name || ""}
+              email={session.user.email || ""}
             />
             <div className="flex flex-col items-center justify-center h-[calc(100vh-64px)]">
               <TravelCostCalculator

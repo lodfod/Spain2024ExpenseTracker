@@ -10,9 +10,10 @@ import supabase from "../lib/createClient";
 interface NavbarProps {
   fullName: string;
   setIsLoading: (isLoading: boolean) => void;
+  email: string;
 }
 
-const Navbar = ({ fullName, setIsLoading }: NavbarProps) => {
+const Navbar = ({ fullName, email, setIsLoading }: NavbarProps) => {
   const getInitials = (fullName: string) => {
     return fullName
       .split(" ")
@@ -58,6 +59,9 @@ const Navbar = ({ fullName, setIsLoading }: NavbarProps) => {
               {getInitials(fullName)}
             </Button>
           </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem>Email: {email}</DropdownMenuItem>
+          </DropdownMenuContent>
           <DropdownMenuContent align="end">
             <DropdownMenuItem onClick={() => handleSignOut}>
               Sign out

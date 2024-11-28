@@ -15,6 +15,8 @@ export interface Expense {
   payers: ProcessedPayer[];
   receipt_url?: string;
   creator: string;
+  original_currency: Currency;
+  original_amount: number;
 }
 
 export interface ExpenseItem {
