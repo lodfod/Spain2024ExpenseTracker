@@ -18,6 +18,7 @@ import { ExternalLink } from "lucide-react";
 import { Button } from "../ui/button";
 import { UUID } from "crypto";
 import { ShowTotals } from "../ShowTotals";
+import { ShowTotalsFinal } from "../ShowTotalsFinal";
 export function AllExpenses() {
   const [allExpenses, setAllExpenses] = useState<Expense[]>();
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
@@ -80,7 +81,15 @@ export function AllExpenses() {
   }, []);
   return (
     <div className="container mx-auto">
-      <ShowTotals expenses={allExpenses!} groupMembers={groupMembers} />
+      {groupMembers.length > 0 && (
+        <div className="flex flex-col gap-4 pb-3">
+          <ShowTotals expenses={allExpenses!} groupMembers={groupMembers} />
+          <ShowTotalsFinal
+            expenses={allExpenses!}
+            groupMembers={groupMembers}
+          />
+        </div>
+      )}
 
       <Table>
         <TableCaption>A list of all expenses.</TableCaption>
