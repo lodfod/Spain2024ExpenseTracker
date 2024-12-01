@@ -63,6 +63,7 @@ export interface ProcessedExpense {
   receipt_url?: string;
   original_currency: "EUR" | "USD";
   original_amount: number;
+  creator: string;
 }
 
 export type Currency = "EUR" | "USD";

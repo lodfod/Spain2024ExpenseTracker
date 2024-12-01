@@ -9,7 +9,7 @@ import {
 } from "../../components/ui/table";
 import supabase from "../../lib/createClient";
 
-import { Expense } from "../../lib/types";
+import { Expense, GroupMember } from "../../lib/types";
 import { useState, useEffect } from "react";
 
 import { format } from "date-fns";
@@ -17,11 +17,25 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { ExternalLink } from "lucide-react";
 import { Button } from "../ui/button";
 import { UUID } from "crypto";
-
+import { ShowTotals } from "../ShowTotals";
 export function AllExpenses() {
   const [allExpenses, setAllExpenses] = useState<Expense[]>();
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
+  const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
 
+  // Add a new useEffect to fetch group members
+  useEffect(() => {
+    const fetchGroupMembers = async () => {
+      const { data, error } = await supabase.from("profiles").select("*");
+      if (error) {
+        console.log("Error fetching group members:", error);
+      } else {
+        setGroupMembers(data);
+      }
+    };
+
+    fetchGroupMembers();
+  }, []);
   useEffect(() => {
     const fetchExpenses = async () => {
       const { data, error } = await supabase.from("expenses").select(`
@@ -45,6 +59,7 @@ export function AllExpenses() {
           ...expense,
           expenseName: expense.name,
           creatorName: expense.profiles.full_name,
+          creator: expense.creator,
           date: format(new Date(expense.created_at), "MM/dd/yyyy HH:mm"),
           payers: expense.payer_amounts.map(
             (pa: {
@@ -65,6 +80,8 @@ export function AllExpenses() {
   }, []);
   return (
     <div className="container mx-auto">
+      <ShowTotals expenses={allExpenses!} groupMembers={groupMembers} />
+
       <Table>
         <TableCaption>A list of all expenses.</TableCaption>
         <TableHeader>
